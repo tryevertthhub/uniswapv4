@@ -65,6 +65,16 @@ class Program
         public EDecimal Token0Amount { get; set; }
         public EDecimal Token1Amount { get; set; }
     }
+
+    public class UniswapV4PoolData
+    {
+        public BigInteger Liquidity { get; set; }
+        public decimal MarketPrice { get; set; }
+        public int TickLower { get; set; }
+        public int TickUpper { get; set; }
+    }
+
+    
     static async Task Main(string[] args)
     {
 
