@@ -257,6 +257,87 @@ class Program
         public static implicit operator string(Address a) => a.Value;
         public static implicit operator Address(string s) => new Address(s);
     }
+
+     public class UniswapMath
+    {
+        private static readonly EDecimal Q96 = EDecimal.FromInt32(2).Pow(96);
+
+        public static TokenAmountsResult GetTokenAmounts(TokenAmountsArgs args)
+        {
+            var ctx = EContext.ForPrecision(100)
+            .WithRounding(ERounding.HalfEven)
+            .WithExponentClamp(false)
+            .WithExponentRange(-1000000, 1000000);
+
+            var liquidity = EDecimal.FromString(args.Liquidity.ToString());
+            var sqrtPriceX96 = EDecimal.FromString(args.SqrtPriceX96.ToString());
+
+            // Use MathNet.Symbolics to compute sqrt ratios
+            var sqrtRatioA = GetSqrtRatio(args.TickLow);
+            var sqrtRatioB = GetSqrtRatio(args.TickHigh);
+
+            var sqrtPrice = sqrtPriceX96.Divide(Q96, ctx);
+            var currentTick = GetTickAtSqrtRatio(sqrtPriceX96);
+
+            EDecimal amount0wei = EDecimal.Zero;
+            EDecimal amount1wei = EDecimal.Zero;
+
+            if (currentTick < args.TickLow)
+            {
+                amount0wei = liquidity
+                    .Multiply(sqrtRatioB.Subtract(sqrtRatioA))
+                    .Divide(sqrtRatioA.Multiply(sqrtRatioB), ctx)
+                    .RoundToExponent(0, ERounding.Floor);
+            }
+            else if (currentTick >= args.TickHigh)
+            {
+                amount1wei = liquidity
+                    .Multiply(sqrtRatioB.Subtract(sqrtRatioA))
+                    .RoundToExponent(0, ERounding.Floor);
+            }
+            else
+            {
+                var numerator0 = sqrtRatioB.Subtract(sqrtPrice);
+                var denominator0 = sqrtPrice.Multiply(sqrtRatioB);
+                amount0wei = liquidity.Multiply(numerator0).Divide(denominator0, ctx).RoundToExponent(0, ERounding.Floor);
+                amount1wei = liquidity.Multiply(sqrtPrice.Subtract(sqrtRatioA)).RoundToExponent(0, ERounding.Floor);
+            }
+
+            var token0Divisor = EDecimal.FromInt32(10).Pow(args.Token0Decimal);
+            var token1Divisor = EDecimal.FromInt32(10).Pow(args.Token1Decimal);
+
+            return new TokenAmountsResult
+            {
+                Token0Amount = amount0wei.Divide(token0Divisor, ctx).RoundToExponent(-6, ERounding.HalfEven),
+                Token1Amount = amount1wei.Divide(token1Divisor, ctx).RoundToExponent(-6, ERounding.HalfEven),
+            };
+        }
+
+        public static int GetTickAtSqrtRatio(EDecimal sqrtPriceX96)
+        {
+            EContext safeContext = EContext.ForPrecision(100)
+                                            .WithExponentClamp(false)
+                                            .WithExponentRange(-1000000, 1000000);
+
+            var sqrtPrice = sqrtPriceX96.Divide(Q96, EContext.Unlimited);
+            var price = sqrtPrice.Multiply(sqrtPrice);
+
+            var logPrice = price.Log(safeContext);
+            var logBase = EDecimal.FromString("1.0001").Log(safeContext);
+
+            var tick = logPrice.Divide(logBase, safeContext);
+            return tick.RoundToExponent(0, ERounding.Floor).ToInt32Checked();
+        }
+
+        private static EDecimal GetSqrtRatio(int tick)
+        {
+            var exponent = (tick / 2.0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var powExpr = Expr.Parse("1.0001").Pow(Expr.Parse(exponent));
+            var approx = powExpr.Evaluate(null); // returns FloatingPoint number
+
+            return EDecimal.FromString(approx.RealValue.ToString("G20", System.Globalization.CultureInfo.InvariantCulture));
+        }
+    }
     
     static async Task Main(string[] args)
     {
