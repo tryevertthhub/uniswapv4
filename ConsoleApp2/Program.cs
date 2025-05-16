@@ -59,7 +59,12 @@ class Program
         public int Token0Decimal { get; set; }
         public int Token1Decimal { get; set; }
     }
-    
+
+    public class TokenAmountsResult
+    {
+        public EDecimal Token0Amount { get; set; }
+        public EDecimal Token1Amount { get; set; }
+    }
     static async Task Main(string[] args)
     {
 
