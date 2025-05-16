@@ -82,6 +82,14 @@ class Program
         public int TickSpacing { get; set; }
         public string Hooks { get; set; }
     }
+
+    public class PositionInfo
+    {
+        public string PoolId { get; set; }
+        public int TickUpper { get; set; }
+        public int TickLower { get; set; }
+        public bool HasSubscriber { get; set; }
+    }
     
     static async Task Main(string[] args)
     {
