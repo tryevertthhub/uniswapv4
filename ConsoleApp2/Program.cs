@@ -74,6 +74,14 @@ class Program
         public int TickUpper { get; set; }
     }
 
+    public class PoolKey
+    {
+        public string Currency0 { get; set; }
+        public string Currency1 { get; set; }
+        public int Fee { get; set; }
+        public int TickSpacing { get; set; }
+        public string Hooks { get; set; }
+    }
     
     static async Task Main(string[] args)
     {
