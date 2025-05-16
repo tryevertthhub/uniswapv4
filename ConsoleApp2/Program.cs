@@ -242,6 +242,22 @@ class Program
         }
     }
 
+    internal class Address
+    {
+        public string Value { get; }
+
+        public Address(string address)
+        {
+            if (!address.StartsWith("0x") || address.Length != 42)
+                throw new ArgumentException("Invalid Ethereum address.");
+
+            Value = address;
+        }
+
+        public static implicit operator string(Address a) => a.Value;
+        public static implicit operator Address(string s) => new Address(s);
+    }
+    
     static async Task Main(string[] args)
     {
 
