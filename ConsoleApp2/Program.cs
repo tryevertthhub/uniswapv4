@@ -204,7 +204,44 @@ class Program
             }
         }
     }
-    
+
+    public class TokenInfoService
+    {
+        private readonly Web3 _web3;
+        private const string zeroAddress = "0x0000000000000000000000000000000000000000";
+
+        public TokenInfoService(Web3 web3)
+        {
+            _web3 = web3;
+        }
+
+        public async Task<TokenInfo> GetTokenInfoAsync(string tokenAddress)
+        {
+            decimal usdPrice = await TokenPriceFetcher.GetTokenUsdPriceAsync(tokenAddress);
+
+            if (tokenAddress.Equals(zeroAddress, StringComparison.OrdinalIgnoreCase))
+            {
+                return new TokenInfo
+                {
+                    TokenDecimal = 18,
+                    TokenSymbol = "ETH",
+                    TokenUsdPrice = usdPrice
+                };
+            }
+
+            var tokenService = new StandardTokenService(_web3, tokenAddress);
+            var tokenDecimal = await tokenService.DecimalsQueryAsync();
+            var tokenSymbol = await tokenService.SymbolQueryAsync();
+
+            return new TokenInfo
+            {
+                TokenDecimal = (int)tokenDecimal,
+                TokenSymbol = tokenSymbol,
+                TokenUsdPrice = usdPrice
+            };
+        }
+    }
+
     static async Task Main(string[] args)
     {
 
