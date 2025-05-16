@@ -30,8 +30,15 @@ using static Program;
 
 class Program
 {
+    public class TokenInfo
+    {
+        public int TokenDecimal { get; set; }
+        public string TokenSymbol { get; set; }
+        public string TokenUsdPrice { get; set; }
+    }
+    
     static async Task Main(string[] args)
     {
-        
+
     }
 }
