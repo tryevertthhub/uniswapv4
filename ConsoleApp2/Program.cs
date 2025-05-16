@@ -36,6 +36,13 @@ class Program
         public string TokenSymbol { get; set; }
         public string TokenUsdPrice { get; set; }
     }
+
+    public class PositionInfoV6
+    {
+        public BigInteger Liquidity { get; set; }
+        public BigInteger FeeGrowthInside0LastX128 { get; set; }
+        public BigInteger FeeGrowthInside1LastX128 { get; set; }
+    }
     
     static async Task Main(string[] args)
     {
