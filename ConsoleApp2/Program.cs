@@ -49,6 +49,16 @@ class Program
         public BigInteger Fee0 { get; set; }
         public BigInteger Fee1 { get; set; }
     }
+
+    public class TokenAmountsAgs
+    {
+        public BigInteger Liquidity { get; set; }
+        public BigInteger SqrtPriceX96 { get; set; }
+        public int TickLow { get; set; }
+        public int TickHigh { get; set; }
+        public int Token0Decimal { get; set; }
+        public int Token1Decimal { get; set; }
+    }
     
     static async Task Main(string[] args)
     {
