@@ -90,6 +90,13 @@ class Program
         public int TickLower { get; set; }
         public bool HasSubscriber { get; set; }
     }
+
+    public class PriceRange
+    {
+        public double MinPrice { get; set; }
+        public double MaxPrice { get; set; }
+        public double CurrentPrice { get; set; }
+    }
     
     static async Task Main(string[] args)
     {
