@@ -155,6 +155,55 @@ class Program
             return sqrtPriceX96;
         }
     }
+
+    public class TokenPriceFetcher
+    {
+        private static readonly HttpClient httpClient = new HttpClient();
+        private const string PlatformId = "ethereum";
+        private static readonly string ZeroAddress = "0x0000000000000000000000000000000000000000";
+
+        public static async Task<decimal> GetTokenUsdPriceAsync(string tokenAddress)
+        {
+            string contractAddress = tokenAddress.ToLower();
+            string apiId = string.Empty;
+            string url = string.Empty;
+
+            if (contractAddress == ZeroAddress.ToLower())
+            {
+                // Native ETH
+                apiId = "ethereum";
+                url = $"https://api.coingecko.com/api/v3/simple/price?ids={apiId}&vs_currencies=usd";
+            }
+            else
+            {
+                // ERC-20 Token
+                apiId = contractAddress;
+                url = $"https://api.coingecko.com/api/v3/simple/token_price/{PlatformId}?contract_addresses={apiId}&vs_currencies=usd";
+            }
+
+            try
+            {
+                HttpResponseMessage response = await httpClient.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+                string content = await response.Content.ReadAsStringAsync();
+
+                using var jsonDoc = JsonDocument.Parse(content);
+                var root = jsonDoc.RootElement;
+
+                if (root.TryGetProperty(apiId, out JsonElement priceData) &&
+                    priceData.TryGetProperty("usd", out JsonElement usdValue))
+                {
+                    return usdValue.GetDecimal();
+                }
+
+                return 0; // Price not found
+            }
+            catch
+            {
+                return 0; // Return 0 on error
+            }
+        }
+    }
     
     static async Task Main(string[] args)
     {
