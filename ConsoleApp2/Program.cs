@@ -43,6 +43,12 @@ class Program
         public BigInteger FeeGrowthInside0LastX128 { get; set; }
         public BigInteger FeeGrowthInside1LastX128 { get; set; }
     }
+
+    public class UncollectedFeesV6
+    {
+        public BigInteger Fee0 { get; set; }
+        public BigInteger Fee1 { get; set; }
+    }
     
     static async Task Main(string[] args)
     {
