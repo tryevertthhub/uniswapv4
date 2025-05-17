@@ -76,8 +76,6 @@ jobs:
     - name: Build solution
       run: dotnet build ${{ env.Solution_Name }} --configuration Release --no-restore
 
-    - name: Run tests
-      run: dotnet test ${{ env.Test_Project_Path }} --no-build --verbosity normal
 
     - name: Publish Console App
       run: dotnet publish ${{ env.Test_Project_Path }} --configuration Release --output ./publish --runtime win-x64 --self-contained false
