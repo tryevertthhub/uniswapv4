@@ -451,6 +451,45 @@ class Program
         var maxSigned = (BigInteger.One << 23) - 1;
         return value > maxSigned ? (int)(value - (BigInteger.One << 24)) : (int)value;
     }
+
+    public static byte[] CreatePoolKey(string currency0, string currency1, uint fee, int tickSpacing, string hooks)
+    {
+        // Ordina gli address in ordine lessicografico (ignorando maiuscole/minuscole)
+        var tokens = new[] { currency0.ToLowerInvariant(), currency1.ToLowerInvariant() };
+        Array.Sort(tokens, StringComparer.Ordinal);
+
+        string token0 = tokens[0];
+        string token1 = tokens[1];
+
+        // Definizione dei parametri ABI
+        var parameters = new[]
+         {
+          new Parameter("address", 1),
+          new Parameter("address", 2),
+          new Parameter("uint24", 3),
+          new Parameter("int24", 4),
+          new Parameter("address", 5)
+         };
+
+        // Valori corrispondenti
+        var values = new object[]
+        {
+          token0,
+          token1,
+          fee,
+          tickSpacing,
+          hooks
+        };
+
+        // Codifica
+        var encoder = new Nethereum.ABI.FunctionEncoding.ParametersEncoder();
+        var encoded = encoder.EncodeParameters(parameters, values);
+
+        // Hash Keccak256
+        var hash = new Sha3Keccack().CalculateHash(encoded);
+        return hash;
+        //return "0x" + hash;
+    }
     
     static async Task Main(string[] args)
     {
