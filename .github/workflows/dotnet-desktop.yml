@@ -45,7 +45,8 @@ on:
       - 'v*'  
   pull_request:
     branches: [ "main" ]
-
+permissions:
+  contents: write  # Required to create a release
 jobs:
 
   build:
