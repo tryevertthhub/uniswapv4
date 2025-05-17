@@ -34,7 +34,7 @@ class Program
     {
         public int TokenDecimal { get; set; }
         public string TokenSymbol { get; set; }
-        public string TokenUsdPrice { get; set; }
+        public decimal TokenUsdPrice { get; set; }
     }
 
     public class PositionInfoV6
@@ -46,11 +46,11 @@ class Program
 
     public class UncollectedFeesV6
     {
-        public BigInteger Fee0 { get; set; }
-        public BigInteger Fee1 { get; set; }
+        public BigInteger Fees0 { get; set; }
+        public BigInteger Fees1 { get; set; }
     }
 
-    public class TokenAmountsAgs
+    public class TokenAmountsArgs
     {
         public BigInteger Liquidity { get; set; }
         public BigInteger SqrtPriceX96 { get; set; }
@@ -98,7 +98,7 @@ class Program
         public double CurrentPrice { get; set; }
     }
 
-    public class TickMath
+    public static class TickMath
     {
         public static readonly BigInteger Q96 = BigInteger.Pow(2, 96);
         public static readonly decimal Q96Decimal = (decimal)Math.Pow(2, 96);
@@ -258,7 +258,7 @@ class Program
         public static implicit operator Address(string s) => new Address(s);
     }
 
-     public class UniswapMath
+    public class UniswapMath
     {
         private static readonly EDecimal Q96 = EDecimal.FromInt32(2).Pow(96);
 
@@ -541,7 +541,7 @@ class Program
 
     static async Task Main(string[] args)
     {
-         var rpcUrl = "https://mainnet.infura.io/v3/10851e6270fa4c30bf54a53b8a083a92";
+        var rpcUrl = "https://mainnet.infura.io/v3/10851e6270fa4c30bf54a53b8a083a92";
         var positionId = 2662L;
         var UNISWAPV4_POSITIONMANAGER_ADDR = "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e";
         var UNISWAPV4_STATEVIEW_ADDR = "0x7ffe42c4a5deea5b0fec41c94c136cf115597227";
