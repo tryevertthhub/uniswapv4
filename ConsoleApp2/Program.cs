@@ -426,7 +426,25 @@ class Program
         }
     }
 
-    
+    public static PositionInfo DecodePositionInfo(BigInteger packedData)
+    {
+        var mask200 = (BigInteger.One << 200) - 1;
+        var mask24 = (BigInteger.One << 24) - 1;
+        var mask8 = (BigInteger.One << 8) - 1;
+
+        var poolId = (packedData >> 56) & mask200;
+        var tickUpper = (packedData >> 32) & mask24;
+        var tickLower = (packedData >> 8) & mask24;
+        var hasSubscriber = (packedData & mask8) != 0;
+
+        return new PositionInfo
+        {
+            PoolId = "0x" + poolId.ToString("x").PadLeft(50, '0'),
+            TickUpper = ToSigned24Bit(tickUpper),
+            TickLower = ToSigned24Bit(tickLower),
+            HasSubscriber = hasSubscriber
+        };
+    }
     static async Task Main(string[] args)
     {
 
