@@ -338,6 +338,94 @@ class Program
             return EDecimal.FromString(approx.RealValue.ToString("G20", System.Globalization.CultureInfo.InvariantCulture));
         }
     }
+
+    public class FeeCalculator
+    {
+        private static readonly BigInteger Q128 = BigInteger.Pow(2, 128);
+
+        public async Task<UncollectedFeesV6> GetUncollectedFeeAsync(
+            StateViewService stateView,
+            PositionManagerService positionManager,
+            byte[] poolId,
+            int tickLower,
+            int tickUpper,
+            int currentTick,
+            byte[] salt)
+        {
+            var poolIdBytes = poolId;
+
+            var feeGrowthGlobalsResult = await stateView.GetFeeGrowthGlobalsQueryAsync(new GetFeeGrowthGlobalsFunction
+            {
+                PoolId = poolId
+            });
+
+            var feeGrowthGlobal0X128 = feeGrowthGlobalsResult.FeeGrowthGlobal0;
+            var feeGrowthGlobal1X128 = feeGrowthGlobalsResult.FeeGrowthGlobal1;
+
+            var tickLowerFunction = new GetTickFeeGrowthOutsideFunction
+            {
+                PoolId = poolId,  // Set the PoolId to the proper Address type
+                Tick = tickLower // Set the TickIndex to the tickLower value (of type int or similar)
+            };
+
+            var tickUpperFunction = new GetTickFeeGrowthOutsideFunction
+            {
+                PoolId = poolId,  // Set the PoolId to the proper Address type
+                Tick = tickUpper // Set the TickIndex to the tickUpper value
+            };
+            var tickLowerData = await stateView.GetTickFeeGrowthOutsideQueryAsync(tickLowerFunction);
+            var tickUpperData = await stateView.GetTickFeeGrowthOutsideQueryAsync(tickUpperFunction);
+            BigInteger feeGrowthOutside0LowerX128 = tickLowerData.FeeGrowthOutside0X128;
+            BigInteger feeGrowthOutside1LowerX128 = tickLowerData.FeeGrowthOutside1X128;
+            BigInteger feeGrowthOutside0UpperX128 = tickUpperData.FeeGrowthOutside0X128;
+            BigInteger feeGrowthOutside1UpperX128 = tickUpperData.FeeGrowthOutside1X128;
+
+            var positionResult = await stateView.GetPositionInfoQueryAsync(
+                poolIdBytes,
+                positionManager.ContractHandler.ContractAddress,
+                tickLower,
+                tickUpper,
+                salt
+            );
+
+            var position = new PositionInfoV6
+            {
+                Liquidity = positionResult.Liquidity,
+                FeeGrowthInside0LastX128 = positionResult.FeeGrowthInside0LastX128,
+                FeeGrowthInside1LastX128 = positionResult.FeeGrowthInside1LastX128
+            };
+
+            // Fee growth calculations
+            BigInteger feeGrowthBelow0X128 = currentTick >= tickLower
+                ? feeGrowthOutside0LowerX128
+                : feeGrowthGlobal0X128 - feeGrowthOutside0LowerX128;
+
+            BigInteger feeGrowthBelow1X128 = currentTick >= tickLower
+                ? feeGrowthOutside1LowerX128
+                : feeGrowthGlobal1X128 - feeGrowthOutside1LowerX128;
+
+            BigInteger feeGrowthAbove0X128 = currentTick < tickUpper
+                ? feeGrowthOutside0UpperX128
+                : feeGrowthGlobal0X128 - feeGrowthOutside0UpperX128;
+
+            BigInteger feeGrowthAbove1X128 = currentTick < tickUpper
+                ? feeGrowthOutside1UpperX128
+                : feeGrowthGlobal1X128 - feeGrowthOutside1UpperX128;
+
+            var feeGrowthInside0X128 = feeGrowthGlobal0X128 - feeGrowthBelow0X128 - feeGrowthAbove0X128;
+            var feeGrowthInside1X128 = feeGrowthGlobal1X128 - feeGrowthBelow1X128 - feeGrowthAbove1X128;
+
+            var uncollectedFees0 = position.Liquidity * (feeGrowthInside0X128 - position.FeeGrowthInside0LastX128) / Q128;
+            var uncollectedFees1 = position.Liquidity * (feeGrowthInside1X128 - position.FeeGrowthInside1LastX128) / Q128;
+
+            return new UncollectedFeesV6
+            {
+                Fees0 = uncollectedFees0,
+                Fees1 = uncollectedFees1
+            };
+        }
+    }
+
     
     static async Task Main(string[] args)
     {
