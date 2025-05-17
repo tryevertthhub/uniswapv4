@@ -445,6 +445,13 @@ class Program
             HasSubscriber = hasSubscriber
         };
     }
+
+    private static int ToSigned24Bit(BigInteger value)
+    {
+        var maxSigned = (BigInteger.One << 23) - 1;
+        return value > maxSigned ? (int)(value - (BigInteger.One << 24)) : (int)value;
+    }
+    
     static async Task Main(string[] args)
     {
 
