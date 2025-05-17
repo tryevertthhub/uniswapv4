@@ -538,9 +538,140 @@ class Program
     {
         return (decimal)value / (decimal)BigInteger.Pow(10, decimals);
     }
-    
+
     static async Task Main(string[] args)
     {
+         var rpcUrl = "https://mainnet.infura.io/v3/10851e6270fa4c30bf54a53b8a083a92";
+        var positionId = 2662L;
+        var UNISWAPV4_POSITIONMANAGER_ADDR = "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e";
+        var UNISWAPV4_STATEVIEW_ADDR = "0x7ffe42c4a5deea5b0fec41c94c136cf115597227";
+        var web3 = new Web3(rpcUrl);
 
+        var PositionManager = new PositionManagerService(web3, UNISWAPV4_POSITIONMANAGER_ADDR);
+        var StateView = new StateViewService(web3, UNISWAPV4_STATEVIEW_ADDR);
+
+
+
+        // Get Token Prices (ETH, USDC example)
+        // string ethAddress = "0x0000000000000000000000000000000000000000"; // ETH
+        // string usdcAddress = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"; // USDC (ERC-20)
+
+        // decimal ethPrice = await TokenPriceFetcher.GetTokenUsdPriceAsync(ethAddress);
+        // decimal usdcPrice = await TokenPriceFetcher.GetTokenUsdPriceAsync(usdcAddress);
+
+
+        // Console.WriteLine($"ETH: ${ethPrice}, USDC: ${usdcPrice}");
+
+
+        var poolAndHash = await PositionManager.GetPoolAndPositionInfoQueryAsync(positionId);
+        var poolKey = (poolAndHash.PoolKey);
+
+        string currency0 = poolKey.Currency0;
+        string currency1 = poolKey.Currency1;
+        uint fee = poolKey.Fee;
+        int tickspacing = poolKey.TickSpacing;
+        string hooks = poolKey.Hooks;
+
+        var poolInfo = CreatePoolKey(currency0, currency1, fee, tickspacing, hooks);
+
+        var data = await StateView.GetSlot0QueryAsync(poolInfo);
+
+        var sqrtPriceX96 = data.SqrtPriceX96;
+        var currentTick = data.Tick;
+        var lpFee = data.LpFee;
+        var protocolFee = data.ProtocolFee;
+
+        var positionInfo = DecodePositionInfo(poolAndHash.Info);
+
+        var poolId = EncodePoolId(
+            poolKey.Currency0,
+            poolKey.Currency1,
+            poolKey.Fee,
+            poolKey.TickSpacing,
+            poolKey.Hooks
+        );
+
+        var pool_Info = await StateView.GetPositionInfoQueryAsync(
+            poolInfo,
+            UNISWAPV4_POSITIONMANAGER_ADDR,
+            positionInfo.TickLower,
+            positionInfo.TickUpper,
+            HexSalt((int)positionId)
+        );
+
+        var tokenInfoService = new TokenInfoService(web3);
+        // TokenInfo tokenInfo = await tokenInfoService.GetTokenInfoAsync(ethAddress);
+        // Console.WriteLine($"Token Symbol: {tokenInfo.TokenSymbol}");
+        // Console.WriteLine($"Token Decimals: {tokenInfo.TokenDecimal}");
+        // Console.WriteLine($"Token USD Price: ${tokenInfo.TokenUsdPrice}");
+
+        var token0Address = poolKey.Currency0;
+        var token1Address = poolKey.Currency1;
+
+        var token0info = await tokenInfoService.GetTokenInfoAsync(token0Address);
+        var token0Decimal = token0info.TokenDecimal;
+        var token0Symbol = token0info.TokenSymbol;
+        var token0USDPrice = token0info.TokenUsdPrice;
+
+        var token1info = await tokenInfoService.GetTokenInfoAsync(token1Address);
+        var token1Decimal = token1info.TokenDecimal;
+        var token1Symbol = token1info.TokenSymbol;
+        var token1USDPrice = token1info.TokenUsdPrice;
+        var prices = GetPriceRanges(
+              positionInfo.TickLower,
+              positionInfo.TickUpper,
+              currentTick,
+              token0Decimal,
+              token1Decimal,
+              false
+        );
+
+        var liquidity = pool_Info.Liquidity;
+        var amountargs = new TokenAmountsArgs
+        {
+            Liquidity = liquidity,
+            SqrtPriceX96 = sqrtPriceX96,
+            TickLow = positionInfo.TickLower,
+            TickHigh = positionInfo.TickUpper,
+            Token0Decimal = token0Decimal,
+            Token1Decimal = token1Decimal
+        };
+
+
+        var token_amounts = UniswapMath.GetTokenAmounts(amountargs);
+
+        var ctx = EContext.ForPrecision(100)
+                        .WithRounding(ERounding.HalfEven)
+                        .WithExponentClamp(false)
+                        .WithExponentRange(-1000000, 1000000);
+
+        var token0USD = token_amounts.Token0Amount.Multiply(EDecimal.FromString(token0USDPrice.ToString()));
+        var token1USD = token_amounts.Token1Amount.Multiply(EDecimal.FromString(token1USDPrice.ToString()));
+        var totalUsd = token0USD.Add(token1USD, ctx);
+
+        FeeCalculator feeCalculator = new FeeCalculator();
+
+        //Call GetUncollectedFeeAsync to get the uncollected fees
+        UncollectedFeesV6 uncollectedFees = await feeCalculator.GetUncollectedFeeAsync(StateView, PositionManager, poolInfo, positionInfo.TickLower, positionInfo.TickUpper, currentTick, HexSalt((int)positionId));
+
+        // Use the uncollected fees
+        decimal token0Fee = FormatUnits(uncollectedFees.Fees0, token0Decimal);
+        decimal token1Fee = FormatUnits(uncollectedFees.Fees1, token1Decimal);
+
+
+        var token0FeeUSD = token0Fee * token0USDPrice;
+        var token1FeeUSD = token1Fee * token1USDPrice;
+        var tokenFee = token0FeeUSD + token1FeeUSD;
+
+        string poolFee = $"{(double)lpFee / 1_000_000 * 100:F2}%"; // "0.30%" for 3000
+
+        Console.WriteLine($"Current Marketplce Price:{prices.CurrentPrice}");
+        Console.WriteLine($"Minimum Price:{prices.MinPrice}");
+        Console.WriteLine($"Maximum Price:{prices.MaxPrice}");
+        Console.WriteLine($"Total USD value: {totalUsd} USD");
+        Console.WriteLine($"Uncollected Fees 0: {token0Fee} {token0Symbol}");
+        Console.WriteLine($"Uncollected Fees 1: {token1Fee} {token1Symbol}");
+        Console.WriteLine($"Total Fee value: {tokenFee} USD");
+        Console.WriteLine(poolFee);
     }
 }
