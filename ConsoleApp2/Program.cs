@@ -490,6 +490,54 @@ class Program
         return hash;
         //return "0x" + hash;
     }
+
+    public static double TickToPrice(int tick, int token0Decimals, int token1Decimals, bool inverse = false)
+    {
+        double rawPrice = Math.Pow(1.0001, tick);
+        double priceT0inT1 = rawPrice / Math.Pow(10, token1Decimals - token0Decimals);
+
+        return inverse ? (priceT0inT1 == 0 ? double.PositiveInfinity : 1 / priceT0inT1) : priceT0inT1;
+    }
+
+    public static PriceRange GetPriceRanges(int tickLower, int tickUpper, int tickCurrent, int token0Decimals, int token1Decimals, bool inverse = false)
+    {
+        var priceLower = TickToPrice(tickLower, token0Decimals, token1Decimals, inverse);
+        var priceUpper = TickToPrice(tickUpper, token0Decimals, token1Decimals, inverse);
+        var currentPrice = TickToPrice(tickCurrent, token0Decimals, token1Decimals, inverse);
+
+        return new PriceRange
+        {
+            MinPrice = Math.Min(priceLower, priceUpper),
+            MaxPrice = Math.Max(priceLower, priceUpper),
+            CurrentPrice = currentPrice
+        };
+    }
+
+    public static byte[] HexSalt(int tokenId)
+    {
+        var hex = tokenId.ToString("x").PadLeft(64, '0');
+        return ("0x" + hex).HexToByteArray();
+    }
+
+    public static byte[] EncodePoolId(string currency0, string currency1, uint fee, int tickSpacing, string hooks)
+    {
+        var abiEncode = new ABIEncode();
+
+        var packed = abiEncode.GetABIEncodedPacked(
+            new ABIValue("address", currency0),
+            new ABIValue("address", currency1),
+            new ABIValue("uint24", fee),
+            new ABIValue("int24", tickSpacing),
+            new ABIValue("address", hooks)
+        );
+
+        return new Sha3Keccack().CalculateHash(packed);
+    }
+
+    public static decimal FormatUnits(BigInteger value, int decimals)
+    {
+        return (decimal)value / (decimal)BigInteger.Pow(10, decimals);
+    }
     
     static async Task Main(string[] args)
     {
