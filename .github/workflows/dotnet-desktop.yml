@@ -41,6 +41,8 @@ name: .NET Core Desktop
 on:
   push:
     branches: [ "main" ]
+    tags:
+      - 'v*'  
   pull_request:
     branches: [ "main" ]
 
@@ -79,3 +81,13 @@ jobs:
 
     - name: Publish Console App
       run: dotnet publish ${{ env.Test_Project_Path }} --configuration Release --output ./publish --runtime win-x64 --self-contained false
+
+    - name: Zip publish output
+      run: Compress-Archive -Path ./publish/* -DestinationPath ./ConsoleApp.zip
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+         tag_name: ${{ github.ref_name }}
+         name: Release ${{ github.ref_name }}
+         files: ./ConsoleApp.zip
